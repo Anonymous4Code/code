@@ -31,7 +31,7 @@ parser.add_argument('--lr', type=float, default=1e-4,
                     help='Initial learning rate.')
 parser.add_argument('--batch_size', type=int, default=16,
                     help='num of transitions sampled from expert.')
-parser.add_argument('--graph_iter', type=int, default=0,
+parser.add_argument('--graph_iter', type=int, default=1,
                     help='graph training epoch.')
 parser.add_argument('--option_num', type=int, default=4,
                     help='option number.')
