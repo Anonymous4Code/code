@@ -266,7 +266,7 @@ class MLP_Segmentation(nn.Module):
         #out = self.softmax(out)
         return out
 
-def graph_VAE_inference_New(encoder, decoder, option_emb, input_rel_rec, input_rel_send, option_num, CUDA = False):
+def graph_VAE_inference(encoder, decoder, option_emb, input_rel_rec, input_rel_send, option_num, CUDA = False):
     logits = encoder(option_emb, input_rel_rec, input_rel_send)
     graph_logits = logits.data
     graph_logits = graph_logits.resize_(option_num,option_num-1).cpu()
