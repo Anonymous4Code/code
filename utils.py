@@ -14,6 +14,32 @@ torch.manual_seed(0)
 np.random.seed(0)
 torch.cuda.manual_seed(0)
 
+#for four room and six room
+def seg_pretrain(controller, meta_train_tasks, folder_name="four_room/generated_traj/"):
+    '''LSTM warm start'''
+    trajs = []
+    traj_list = []
+    traj_arr = []
+    warm_start_optimizer = optim.Adam(list(controller.parameters()),
+                       lr=1e-2, betas=(0.5, 0.999))
+
+    for task_id in meta_train_tasks:
+        traj_file_name = "data/demo_"+str(args.demos)+"_task_"+str(task_id)+".npy"
+        traj = np.load(traj_file_name, allow_pickle = True)
+        trajs.append(traj)
+    traj_list = traj_to_option_list_together(trajs)
+    traj_tensor = torch.Tensor(traj_list)
+    input_traj_padded, input_traj_mask, padding_len, traj_length = traj_padding_together(trajs, args.state_dim)
+    print("padding")
+    option_all_file_name = "data/option_all_"+str(args.demos)+".npy"
+    option_arrs = np.load(option_all_file_name, allow_pickle = True)
+ 
+    target_opt_padded = option_padding_together(option_arrs, padding_len)
+    input_traj_padded = torch.Tensor(input_traj_padded)
+    target_opt_padded = torch.Tensor(target_opt_padded)
+    input_traj_mask = torch.Tensor(input_traj_mask).unsqueeze(-1)
+    LSTM_warm_start_criterion = nn.CrossEntropyLoss() #nn.NLLLoss()#
+    
 def traj_padding(sequences, output_dim):
     """
     :param sequences: list of tensors

@@ -62,68 +62,19 @@ parser.add_argument('--room_num', type=int, default=4,
 parser.add_argument('--demos', type=int, default=5,
                     help='demonstrations in each task')
 parser.add_argument('--LSTM_seg_interval', type=int, default=5,
-                    help='graph aggregate info; range from 0 to 1') 
+                    help='LSTM interval') 
 parser.add_argument('--test_meta_task', type=int, default=5,
-                    help='graph aggregate info; range from 0 to 1')                    
+                    help='number of meta test task')                    
 parser.add_argument('--save_folder', type=str, default='res/',
                     help='save vis result to folder ')  
 parser.add_argument('--meta_iterator', type=int, default='20',
-                    help='save vis result to folder ')     
+                    help='meta iterator number')     
 parser.add_argument('--meta_lr', type=float, default='1e-3',
-                    help='save vis result to folder ')      
+                    help='meta learning rate')      
 parser.add_argument('--meta_inner', type=int, default='5',
-                    help='save vis result to folder ')  
+                    help='meta inner optimizer number')  
+
 args = parser.parse_args()
-
-
-def seg_pretrain(controller, meta_train_tasks, folder_name="four_room/generated_traj/"):
-    '''LSTM warm start'''
-    trajs = []
-    traj_list = []
-    traj_arr = []
-    warm_start_optimizer = optim.Adam(list(controller.parameters()),
-                       lr=1e-2, betas=(0.5, 0.999))
-
-    for task_id in meta_train_tasks:
-        traj_file_name = "data/demo_"+str(args.demos)+"_task_"+str(task_id)+".npy"
-        traj = np.load(traj_file_name, allow_pickle = True)
-        trajs.append(traj)
-    traj_list = traj_to_option_list_together(trajs)
-    traj_tensor = torch.Tensor(traj_list)
-    input_traj_padded, input_traj_mask, padding_len, traj_length = traj_padding_together(trajs, args.state_dim)
-    print("padding")
-    option_all_file_name = "data/option_all_"+str(args.demos)+".npy"
-    option_arrs = np.load(option_all_file_name, allow_pickle = True)
- 
-    target_opt_padded = option_padding_together(option_arrs, padding_len)
-    input_traj_padded = torch.Tensor(input_traj_padded)
-    target_opt_padded = torch.Tensor(target_opt_padded)
-    input_traj_mask = torch.Tensor(input_traj_mask).unsqueeze(-1)
-    LSTM_warm_start_criterion = nn.CrossEntropyLoss() #nn.NLLLoss()#
-
-    if args.CUDA:
-        target_opt_padded = target_opt_padded.cuda()
-        input_traj_padded = input_traj_padded.cuda()
-        input_traj_mask = input_traj_mask.cuda()
-    '''LSTM warm start'''
-    loss_warm_start_LSTM = []
-    for warm_start in range(args.warm_start_epoch):
-        indexes = np.random.randint(0, len(traj)*args.meta_train_num, size=args.batch_size)
-        batch_mask = input_traj_mask[indexes]
-        batch_traj_input = input_traj_padded[indexes]
-        batch_opt_target = target_opt_padded[indexes]
-        estimated_opt = controller(batch_traj_input)
-        estimated_opt = estimated_opt*batch_mask
-        estimated_opt = estimated_opt.permute(0, 2, 1)
-        batch_masked_target_opt = batch_opt_target*batch_mask
-        batch_masked_target_opt = batch_masked_target_opt.squeeze()
-        warm_start_optimizer.zero_grad()
-        loss_LSTM_warm_start = LSTM_warm_start_criterion(estimated_opt, batch_masked_target_opt.long())
-        loss_LSTM_warm_start.backward()
-        loss_warm_start_LSTM.append(loss_LSTM_warm_start)
-        warm_start_optimizer.step()
-    return controller
-
 
 torch.manual_seed(args.random_seed)
 np.random.seed(args.random_seed)
@@ -154,8 +105,8 @@ meta_test_tasks = [5,6]
 
 hashmap = collections.defaultdict(dict)
 option_hashmap = collections.defaultdict(dict)
-x_state = pd.read_csv('x_mimic_meta_learning_with_task_label.csv')
-y_action = pd.read_csv('y_mimic_meta_learning_option_number6_old_action.csv')  
+x_state = pd.read_csv('data/x_mimic_meta_learning_with_task_label.csv')
+y_action = pd.read_csv('data/y_mimic_meta_learning_option_number6_old_action.csv')  
 patient_matrix = x_state.values
 action_matrix = y_action.values
 option_matrix = copy.deepcopy(action_matrix)
@@ -219,10 +170,7 @@ trajs_length = []
 input_trajs_padded = []
 input_trajs_mask = []
 for i in range(args.meta_train_num):
-    #print(args.meta_train_num)
-   # print(len(trajs))
     input_traj_padded, input_traj_mask, padding_len, traj_length = traj_padding_meta_task(trajs[i], args.state_dim)
-    #option_arr = np.array(get_option_from_seqs_lstm_meta_task(trajs[i])) 
     input_traj_padded = torch.Tensor(input_traj_padded)
     input_traj_mask = torch.Tensor(input_traj_mask).unsqueeze(-1)
     predicted_opt = controller(input_traj_padded)
